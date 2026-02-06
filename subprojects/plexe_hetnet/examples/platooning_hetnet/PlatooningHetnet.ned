@@ -30,12 +30,12 @@ import org.car2x.veins.modules.world.annotations.AnnotationManager;
 import org.car2x.plexe.PlexeManager;
 import org.car2x.plexe.mobility.TraCIBaseTrafficManager;
 
-import lte.corenetwork.nodes.eNodeB;
+//import lte.corenetwork.nodes.eNodeB;
 import inet.node.ethernet.Eth10G;
-import lte.corenetwork.binder.LteBinder;
-import lte.world.radio.LteChannelControl;
-import lte.common.LteNetworkConfigurator;
-import lte.epc.PgwStandardSimplified;
+//import lte.corenetwork.binder.LteBinder;
+//import lte.world.radio.LteChannelControl;
+//import lte.common.LteNetworkConfigurator;
+//import lte.epc.PgwStandardSimplified;
 import inet.node.inet.Router;
 import inet.node.inet.StandardHost;
 
@@ -54,29 +54,29 @@ network PlatooningHetnet
         @display("bgb=1164.825,450.9");
     submodules:
         //# LTE modules
-        channelControl: LteChannelControl {
-            @display("p=50,25;is=s");
-        }
-        configurator: LteNetworkConfigurator {
-            @display("p=50,125");
-            config = xmldoc("demo.xml");
-        }
-        binder: LteBinder {
-            @display("p=50,175;is=s");
-        }
-        router: Router {
-            @display("p=321,136;i=device/smallrouter");
-        }
-        pgw: PgwStandardSimplified {
-            nodeType = "PGW";
-            @display("p=172,287;is=l");
-        }
-        eNodeB1: eNodeB {
-            @display("p=0,0;is=vl");
-        }
-        eNodeB2: eNodeB {
-            @display("p=1000,0;is=vl");
-        }
+        //channelControl: LteChannelControl {
+        //    @display("p=50,25;is=s");
+        //}
+        //configurator: LteNetworkConfigurator {
+        //    @display("p=50,125");
+        //    config = xmldoc("demo.xml");
+        //}
+        //binder: LteBinder {
+        //    @display("p=50,175;is=s");
+        //}
+        //router: Router {
+        //    @display("p=321,136;i=device/smallrouter");
+        //}
+        //pgw: PgwStandardSimplified {
+        //    nodeType = "PGW";
+        //    @display("p=172,287;is=l");
+        //}
+        //eNodeB1: eNodeB {
+        //    @display("p=0,0;is=vl");
+        //}
+        //eNodeB2: eNodeB {
+        //    @display("p=1000,0;is=vl");
+        //}
         obstacles: ObstacleControl {
             @display("p=240,50");
         }
@@ -114,9 +114,9 @@ network PlatooningHetnet
         }
 
     connections allowunconnected:
-        router.pppg++ <--> Eth10G <--> pgw.filterGate;
-        pgw.pppg++ <--> Eth10G <--> eNodeB1.ppp;
-        pgw.pppg++ <--> Eth10G <--> eNodeB2.ppp;
-        eNodeB1.x2++ <--> Eth10G <--> eNodeB2.x2++;
+        //router.pppg++ <--> Eth10G <--> pgw.filterGate;
+        //pgw.pppg++ <--> Eth10G <--> eNodeB1.ppp;
+        //pgw.pppg++ <--> Eth10G <--> eNodeB2.ppp;
+        //eNodeB1.x2++ <--> Eth10G <--> eNodeB2.x2++;
 }
 
