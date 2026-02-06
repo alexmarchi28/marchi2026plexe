@@ -37,6 +37,9 @@ simple PlatoonsTrafficManager extends BTraCIBaseTrafficManager {
         int nLanes;
         //sumo vehicle type for platooning cars
         string platooningVType;
+        //sumo vehicle type for shockwave cars
+        string shockwaveVType = default("");
+        bool injectShockwaveCars = default(false);
         //insert distance and headway. distance is computed as:
         //dist = insertHeadway * insertSpeed + insertDistance
         double platoonInsertDistance @unit("m") = default(5m);
