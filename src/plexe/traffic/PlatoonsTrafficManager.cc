@@ -41,6 +41,8 @@ void PlatoonsTrafficManager::initialize(int stage)
         platoonLeaderHeadway = par("platoonLeaderHeadway").doubleValue();
         platoonAdditionalDistance = par("platoonAdditionalDistance").doubleValue();
         platooningVType = par("platooningVType").stdstringValue();
+        shockwaveVType = par("shockwaveVType").stdstringValue();
+        injectShockwaveCars = par("injectShockwaveCars").boolValue();
         insertPlatoonMessage = new cMessage("");
         scheduleAt(platoonInsertTime, insertPlatoonMessage);
     }
@@ -61,6 +63,18 @@ void PlatoonsTrafficManager::handleSelfMsg(cMessage* msg)
 
     if (msg == insertPlatoonMessage) {
         insertPlatoons();
+    }
+}
+
+void PlatoonsTrafficManager::insertShockwaveCars(double position)
+{
+    struct Vehicle shockwave;
+    shockwave.id = findVehicleTypeIndex(shockwaveVType.empty() ? "shockwave" : shockwaveVType);
+    for (int l = 0; l < nLanes; l++) {
+        shockwave.lane = l;
+        shockwave.position = position + 2 * platoonInsertSpeed / 3.6 + 4;
+        shockwave.speed = platoonInsertSpeed / 3.6;
+        addVehicleToQueue(0, shockwave);
     }
 }
 
@@ -86,6 +100,7 @@ void PlatoonsTrafficManager::insertPlatoons()
     int currentVehiclePosition = 0;
     int currentVehicleId = 0;
     int basePlatoonId = 0;
+    if (injectShockwaveCars) insertShockwaveCars(totalLength);
     for (int i = 0; i < nCars / nLanes; i++) {
         for (int l = 0; l < nLanes; l++) {
 

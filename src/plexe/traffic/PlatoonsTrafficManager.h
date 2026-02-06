@@ -42,6 +42,8 @@ public:
         platoonSize = 0;
         nCars = 0;
         nLanes = 0;
+        shockwaveVType = "";
+        injectShockwaveCars = false;
     }
     virtual ~PlatoonsTrafficManager();
 
@@ -50,6 +52,7 @@ protected:
     cMessage* insertPlatoonMessage;
 
     void insertPlatoons();
+    void insertShockwaveCars(double position);
 
     virtual void handleSelfMsg(cMessage* msg);
 
@@ -74,6 +77,9 @@ protected:
     double platoonAdditionalDistance;
     // sumo vehicle type of platooning cars
     std::string platooningVType;
+    // sumo vehicle type of shockwave cars
+    std::string shockwaveVType;
+    bool injectShockwaveCars;
 
     virtual void scenarioLoaded();
 };
