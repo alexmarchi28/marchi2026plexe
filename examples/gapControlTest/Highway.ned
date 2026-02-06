@@ -1,5 +1,6 @@
 //
-// Copyright (C) 2012-2025 Michele Segata <segata@ccs-labs.org>
+// Copyright (C) 2008 Christoph Sommer <christoph.sommer@informatik.uni-erlangen.de>
+// Copyright (C) 2012-2021 Michele Segata <segata@ccs-labs.org>
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 //
@@ -18,19 +19,7 @@
 // Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //
 
-packet PlatooningBeacon {
-    //id of the originator
-    int vehicleId = 0;
-    double controllerAcceleration = 0;
-    double acceleration = 0;
-    double speed = 0;
-    double positionX = 0;
-    double positionY = 0;
-    double time = 0;
-    int sequenceNumber = 0;
-    double length = 0;
-    double speedX = 0;
-    double speedY = 0;
-    double angle = 0;
-    bool temporaryLeader = false;
-}
+import org.car2x.plexe.PlexeScenario;
+
+network Highway extends PlexeScenario
+{}

@@ -67,6 +67,8 @@ void BasePositionHelper::initialize(int stage)
         distance = vehicleInfo.distance;
         headway = vehicleInfo.headway;
         setVariablesAfterFormationChange();
+        enableTemporaryLeader = false;
+        temporaryLeaderId = -1;
     }
 }
 
@@ -131,6 +133,7 @@ int BasePositionHelper::getPosition() const
 
 int BasePositionHelper::getLeaderId() const
 {
+    if (enableTemporaryLeader) return temporaryLeaderId;
     return leaderId;
 }
 
@@ -275,6 +278,12 @@ double BasePositionHelper::getHeadway()
 void BasePositionHelper::setHeadway(double headway)
 {
     this->headway = headway;
+}
+
+void BasePositionHelper::setTemporaryLeader(bool enable, int leaderId)
+{
+    enableTemporaryLeader = enable;
+    temporaryLeaderId = leaderId;
 }
 
 } // namespace plexe
