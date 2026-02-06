@@ -43,10 +43,10 @@ import inet.transportlayer.contract.IUdp;
 import inet.transportlayer.tcp.Tcp;
 import inet.transportlayer.udp.Udp;
 import inet.common.MessageDispatcher;
-import lte.stack.ILteNic;
-import lte.stack.LteNicUe;
-import lte.stack.LteNicUeD2D;
-import org.car2x.plexe.subprojects.plexe_lte.LTECV2XMode3RadioDriver;
+// import lte.stack.ILteNic;
+//import lte.stack.LteNicUe;
+// import lte.stack.LteNicUeD2D;
+// import org.car2x.plexe.subprojects.plexe_lte.LTECV2XMode3RadioDriver;
 
 import org.car2x.plexe.subprojects.plexe_vlc.VeinsVLCRadioDriver;
 import org.car2x.veinsvlc.NicVlc;
@@ -131,11 +131,11 @@ module PlatoonCarHetNet
         mobility: <mobilityType> like IMobility {
             @display("p=50,175;is=s");
         }
-        lteNic: <nicType> like ILteNic {
-            nodeType = nodeType;
-            d2dCapable = d2dCapable;
-            @display("p=252,469");
-        }
+        //lteNic: <nicType> like ILteNic {
+        //    nodeType = nodeType;
+        //    d2dCapable = d2dCapable;
+        //    @display("p=252,469");
+        //}
         // network layer
         ipv4: <default("Ipv4NetworkLayer")> like INetworkLayer {
             parameters:
@@ -162,11 +162,11 @@ module PlatoonCarHetNet
             parameters:
                 @display("p=750,146;b=1000,5,,,,1");
         }
-        lteCV2XMode3Driver: LTECV2XMode3RadioDriver {
-            @display("p=250.98,111.072,row");
-            destinationPort = 3000;
-            multicastAddress = "224.0.0.1";
-        }
+        //lteCV2XMode3Driver: LTECV2XMode3RadioDriver {
+        //    @display("p=250.98,111.072,row");
+        //    destinationPort = 3000;
+        //    multicastAddress = "224.0.0.1";
+        //}
 
         veinsVlcDriver: VeinsVLCRadioDriver {
             parameters:
@@ -216,10 +216,10 @@ module PlatoonCarHetNet
         nl.out++ --> ipv4.ifIn;
         nl.in++ <-- ipv4.ifOut;
 
-        nl.out++ --> lteNic.upperLayerIn;
-        nl.in++ <-- lteNic.upperLayerOut;
+        //nl.out++ --> lteNic.upperLayerIn;
+        //nl.in++ <-- lteNic.upperLayerOut;
 
-        lteNic.radioIn <-- radioIn;
+        //lteNic.radioIn <-- radioIn;
 
         //11p stack connections
         nic.upperLayerIn <-- veins11pDriver.lowerLayerOut;
@@ -227,10 +227,10 @@ module PlatoonCarHetNet
         veins11pDriver.upperLayerIn <-- prot.radiosOut++;
         veins11pDriver.upperLayerOut --> prot.radiosIn++;
         //LTE D2D connections
-        lteCV2XMode3Driver.upperLayerIn <-- prot.radiosOut++;
-        lteCV2XMode3Driver.upperLayerOut --> prot.radiosIn++;
-        lteCV2XMode3Driver.socketOut --> at.in++;
-        lteCV2XMode3Driver.socketIn <-- at.out++;
+        //lteCV2XMode3Driver.upperLayerIn <-- prot.radiosOut++;
+        //lteCV2XMode3Driver.upperLayerOut --> prot.radiosIn++;
+        //lteCV2XMode3Driver.socketOut --> at.in++;
+        //lteCV2XMode3Driver.socketIn <-- at.out++;
         //VLC connections
         veinsVlcDriver.upperLayerIn <-- prot.radiosOut++;
         veinsVlcDriver.upperLayerOut --> prot.radiosIn++;
