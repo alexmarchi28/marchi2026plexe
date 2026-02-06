@@ -31,6 +31,25 @@ parameters:
     string joinManeuver;
     // implementation of the platoons merge maneuver
     string mergeManeuver;
+    // list of controllers to be used in each state (starting with C_0)
+    string C_i = default("ACC PLOEG PLOEG CACC");
+    // list of time headways to be used in each state
+    string h_i = default("1.2 1.2 0.5 0");
+    string d_i = default("2 2 2 5");
+    // enable/disable artificial failures for testing purposes
+    bool enableArtificialFailures = default(true);
+    bool useTemporaryLeader = default(true);
+    // string of space separated values indicating artificial failure events
+    // the following default values describe 4 events for vehicle 3:
+    // - failure of first interface at time 10s
+    // - failure of second interface at time 40s
+    // - recovery of first interface at time 130s
+    // - recovery of second interface at time 160s
+    string failureVehicles = default("3 3 3 3");
+    string failureTimes = default("10 40 130 160");
+    string failureEvents = default("1 1 0 0");
+    // dummy fallback mechanism, switching directly to the next controller and gap (omitting the gap control mechanism)
+    bool skipGapControl = default(false);
 
     int headerLength @unit("bit") = default(0 bit);
     @display("i=block/app2");
