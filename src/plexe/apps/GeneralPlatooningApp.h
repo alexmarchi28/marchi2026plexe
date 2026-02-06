@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <set>
 
 #include "plexe/apps/BaseApp.h"
 #include "plexe/maneuver/JoinManeuver.h"
@@ -190,6 +191,11 @@ public:
     virtual void sendUnicast(cPacket* msg, int destination, short type);
 
     /**
+     * Starts the gap control procedure to reach the desired headway/distance.
+     */
+    void startGapControl(double h_t, double d_t, enum ACTIVE_CONTROLLER controller);
+
+    /**
      * Fills members of a ManeuverMessage
      *
      * @param msg ManeuverMessage the message to be filled
@@ -268,7 +274,15 @@ public:
      */
     enum ACTIVE_CONTROLLER getTargetController();
 
+    static enum ACTIVE_CONTROLLER strToController(const char* controller);
+
+    static bool isLeaderBased(enum ACTIVE_CONTROLLER controller);
+
+    static bool usesTimeHeadway(enum ACTIVE_CONTROLLER controller);
+
 protected:
+    static constexpr int N_INTERFACES = 3;
+
     /** override this method of BaseApp. we want to handle it ourself */
     virtual void handleLowerMsg(cMessage* msg) override;
 
@@ -294,10 +308,79 @@ protected:
     /** used to receive the "retries exceeded" signal **/
     virtual void receiveSignal(cComponent* src, simsignal_t id, cObject* value, cObject* details) override;
 
+    using veins::BaseApplLayer::receiveSignal;
+    virtual void receiveSignal(cComponent* source, simsignal_t signalID, long l, cObject* details) override;
+
     /** used by maneuvers to schedule self messages, as they are not omnet modules */
     virtual void scheduleSelfMsg(simtime_t t, cMessage* msg);
 
     BaseScenario* scenario;
+
+    // ** variables and methods used for the gap control procedure */
+    cMessage* updateGapMsg = nullptr;
+    double h = 0;
+    double g = 0;
+    double v = 0;
+    double g_t = 0;
+    double h_t = 0;
+    double d_t = 0;
+    bool gapControlEnabled = false;
+    double deltaG = 1;
+    double deltaT = 0.1;
+    double deltaH = 0;
+    bool increasingGap = false;
+    bool useTemporaryLeader = false;
+    // dummy fallback mechanism, switching directly to the next controller and gap (omitting the gap control mechanism)
+    bool skipGapControl = false;
+
+    void setControllerGap(double h, double d);
+    void updateGap();
+    bool isGapReached();
+    bool isGapControlCompleted();
+    bool usingTimeHeadway();
+    void debugGapControlInfo();
+
+    simsignal_t sigInterfaceFailure = 0;
+    simsignal_t sigInterfaceRecovery = 0;
+
+    // fallback system state machine variables
+    enum FallbackState {
+        FOLLOW,
+        GAP_CONTROL
+    };
+    // current state (to be combined with the number of active interfaces
+    enum FallbackState state = FOLLOW;
+    // number of active interfaces
+    int i = 0;
+    // set of temporary leaders
+    std::set<int> tempLeaders;
+    // array of time headways and distances associated with each state
+    double h_i[N_INTERFACES + 1] = {};
+    double d_i[N_INTERFACES + 1] = {};
+    // array of controllers associated with each state
+    enum plexe::ACTIVE_CONTROLLER C_i[N_INTERFACES + 1] = {};
+    // state of each interface (used to avoid double failures/recoveries for leader and front events)
+    bool active[N_INTERFACES] = {};
+
+    // actions of the FSM on events
+    void init();
+    void failure();
+    void recover();
+    void gapReached();
+    void timeout();
+    void onTemporaryLeader(int veh, bool tempLeader);
+
+    cOutVector eventVehicleId;
+    cOutVector eventFailure;
+    cOutVector eventInterface;
+
+    // variables used to simulate artificial failures
+    bool enableArtificialFailures = false;
+    int artificiallyFailedCount = 0;
+    class FailureMessage : public cMessage {
+    public:
+        bool failure = false;
+    };
 
 private:
     /** the role of this vehicle */
