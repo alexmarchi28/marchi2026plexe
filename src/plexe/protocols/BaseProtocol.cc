@@ -34,7 +34,15 @@ namespace plexe {
 
 Define_Module(BaseProtocol);
 
+const simsignal_t BaseProtocol::sigInterfaceFailure = registerSignal("org_car2x_plexe_protocols_baseProtocol_sigInterfaceFailure");
+const simsignal_t BaseProtocol::sigInterfaceRecovery = registerSignal("org_car2x_plexe_protocols_baseProtocol_sigInterfaceRecovery");
+
 const int BaseProtocol::BEACON_TYPE = 12345;
+
+// CAREFUL: the index of the interface depends on the order they are connected inside the PlatoonCarHetNet file
+#define I11P 0
+#define ICV2X 1
+#define IVLC 2
 
 void BaseProtocol::initialize(int stage)
 {
@@ -45,9 +53,6 @@ void BaseProtocol::initialize(int stage)
 
         // init class variables
         sendBeacon = 0;
-        channelBusy = false;
-        nCollisions = 0;
-        busyTime = SimTime(0);
         seq_n = 0;
         recordData = 0;
 
@@ -67,8 +72,6 @@ void BaseProtocol::initialize(int stage)
         for (int i = 0; i < gateSize("radiosOut"); i++) {
             PlexeRadioDriverInterface* radio = check_and_cast<PlexeRadioDriverInterface*>(gate("radiosOut", i)->getNextGate()->getOwnerModule());
             radioOuts[radio->getDeviceType()] = gate("radiosOut", i);
-            radio = check_and_cast<PlexeRadioDriverInterface*>(gate("radiosIn", i)->getPreviousGate()->getOwnerModule());
-            radioIns[gate("radiosIn", i)->getId()] = radio->getDeviceType();
         }
 
         // beaconing interval in seconds
@@ -83,24 +86,29 @@ void BaseProtocol::initialize(int stage)
         sendBeacon = new cMessage("sendBeacon");
         recordData = new cMessage("recordData");
 
-        // set names for output vectors
-        // own id
-        nodeIdOut.setName("nodeId");
-        // channel busy time
-        busyTimeOut.setName("busyTime");
-        // mac layer collisions
-        collisionsOut.setName("collisions");
-        // delay metrics
-        lastLeaderMsgTime = SimTime(-1);
-        lastFrontMsgTime = SimTime(-1);
-        leaderDelayIdOut.setName("leaderDelayId");
-        frontDelayIdOut.setName("frontDelayId");
-        leaderDelayOut.setName("leaderDelay");
-        frontDelayOut.setName("frontDelay");
+        statsIdOut.setName("statsId");
+        leaderFer11pOut.setName("leaderFer11p");
+        leaderFerVLCOut.setName("leaderFerVLC");
+        leaderFerLTEOut.setName("leaderFerLTE");
+        frontFer11pOut.setName("frontFer11p");
+        frontFerVLCOut.setName("frontFerVLC");
+        frontFerLTEOut.setName("frontFerLTE");
+        leaderDelay11pOut.setName("leaderDelay11p");
+        leaderDelayVLCOut.setName("leaderDelayVLC");
+        leaderDelayLTEOut.setName("leaderDelayLTE");
+        frontDelay11pOut.setName("frontDelay11p");
+        frontDelayVLCOut.setName("frontDelayVLC");
+        frontDelayLTEOut.setName("frontDelayLTE");
+        leaderInterarrival11pOut.setName("leaderInterarrival11p");
+        leaderInterarrivalVLCOut.setName("leaderInterarrivalVLC");
+        leaderInterarrivalLTEOut.setName("leaderInterarrivalLTE");
+        frontInterarrival11pOut.setName("frontInterarrival11p");
+        frontInterarrivalVLCOut.setName("frontInterarrivalVLC");
+        frontInterarrivalLTEOut.setName("frontInterarrivalLTE");
 
-        // subscribe to signals for channel busy state and collisions
-        findHost()->subscribe(veins::Mac1609_4::sigChannelBusy, this);
-        findHost()->subscribe(veins::Mac1609_4::sigCollision, this);
+        handoverIdOut.setName("handoverId");
+        handoverStartOut.setName("handoverStart");
+
 
         // init statistics collection. round to second
         SimTime rounded = SimTime(floor(simTime().dbl() + 1), SIMTIME_S);
@@ -128,15 +136,55 @@ void BaseProtocol::initialize(int stage)
         if (Veins11pRadioDriver* driver = FindModule<Veins11pRadioDriver*>::findSubModule(getParentModule())) {
             driver->registerNode(myId);
         }
+        frameStatsWindow = par("frameStatsWindow");
+        leaderFrames = new FramesRingBuffer(frameStatsWindow);
+        frontFrames = new FramesRingBuffer(frameStatsWindow);
+
+        lte_stack_phy_handover = findHost()->registerSignal("lte_stack_phy_handover");
+        findHost()->subscribe(lte_stack_phy_handover, this);
+
+        if (!positionHelper->isLeader()) {
+            deltaT = par("deltaT").doubleValue();
+            pdr11p = par("pdr11p").doubleValue();
+            pdrCV2X = par("pdrCV2X").doubleValue();
+            pdrVLC = par("pdrVLC").doubleValue();
+            double pdrs[N_INTERFACES];
+            pdrs[I11P] = pdr11p;
+            pdrs[ICV2X] = pdrCV2X;
+            pdrs[IVLC] = pdrVLC;
+
+            checkLeaderInterfacesStatus = new cMessage("checkLeaderInterfacesStatus");
+            checkFrontInterfacesStatus = new cMessage("checkFrontInterfacesStatus");
+            for (int i = 0; i < N_INTERFACES; i++) {
+                leaderMonitors[i] = new InterfaceMonitor(leaderFrames, i, pdrs[i], deltaT);
+                frontMonitors[i] = new InterfaceMonitor(frontFrames, i, pdrs[i], deltaT);
+            }
+        }
+        else {
+            for (int i = 0; i < N_INTERFACES; i++) {
+                leaderMonitors[i] = nullptr;
+                frontMonitors[i] = nullptr;
+            }
+        }
     }
 }
 
 BaseProtocol::~BaseProtocol()
 {
+    delete leaderFrames;
+    delete frontFrames;
     cancelAndDelete(sendBeacon);
     sendBeacon = nullptr;
     cancelAndDelete(recordData);
     recordData = nullptr;
+    cancelAndDelete(checkLeaderInterfacesStatus);
+    checkLeaderInterfacesStatus = nullptr;
+    cancelAndDelete(checkFrontInterfacesStatus);
+    checkFrontInterfacesStatus = nullptr;
+    for (int i = 0; i < N_INTERFACES; i++) {
+        delete leaderMonitors[i];
+        delete frontMonitors[i];
+    }
 }
 
 void BaseProtocol::handleSelfMsg(cMessage* msg)
@@ -144,27 +192,63 @@ void BaseProtocol::handleSelfMsg(cMessage* msg)
 
     if (msg == recordData) {
 
-        // if channel is currently busy, we have to split the amount of time between
-        // this period and the successive. so we just compute the channel busy time
-        // up to now, and then reset the "startBusy" timer to now
-        if (channelBusy) {
-            busyTime += simTime() - startBusy;
-            startBusy = simTime();
-        }
+        double fer[N_INTERFACES];
+        double delays[N_INTERFACES];
+        double interarrivals[N_INTERFACES];
 
-        // time for writing statistics
-        // node id
-        nodeIdOut.record(myId);
-        // record busy time for this period
-        busyTimeOut.record(busyTime);
-        // record collisions for this period
-        collisionsOut.record(nCollisions);
+        statsIdOut.record(myId);
 
-        // and reset counter
-        busyTime = SimTime(0);
-        nCollisions = 0;
+        leaderFrames->getStats(fer, delays, interarrivals, true);
+        leaderFer11pOut.record(fer[I11P]);
+        leaderFerVLCOut.record(fer[IVLC]);
+        leaderFerLTEOut.record(fer[ICV2X]);
+        leaderDelay11pOut.record(delays[I11P]);
+        leaderDelayVLCOut.record(delays[IVLC]);
+        leaderDelayLTEOut.record(delays[ICV2X]);
+        leaderInterarrival11pOut.record(interarrivals[I11P]);
+        leaderInterarrivalVLCOut.record(interarrivals[IVLC]);
+        leaderInterarrivalLTEOut.record(interarrivals[ICV2X]);
+
+        frontFrames->getStats(fer, delays, interarrivals, true);
+        frontFer11pOut.record(fer[I11P]);
+        frontFerVLCOut.record(fer[IVLC]);
+        frontFerLTEOut.record(fer[ICV2X]);
+        frontDelay11pOut.record(delays[I11P]);
+        frontDelayVLCOut.record(delays[IVLC]);
+        frontDelayLTEOut.record(delays[ICV2X]);
+        frontInterarrival11pOut.record(interarrivals[I11P]);
+        frontInterarrivalVLCOut.record(interarrivals[IVLC]);
+        frontInterarrivalLTEOut.record(interarrivals[ICV2X]);
 
         scheduleAt(simTime() + SimTime(1, SIMTIME_S), recordData);
+    }
+    else if (msg == checkLeaderInterfacesStatus) {
+        for (int i = 0; i < N_INTERFACES; i++) {
+            switch (leaderMonitors[i]->checkStatus(simTime().dbl())) {
+            case InterfaceMonitor::SIGNAL_FAILURE:
+                emit(sigInterfaceFailure, i);
+                break;
+            case InterfaceMonitor::SIGNAL_RECOVERY:
+                emit(sigInterfaceRecovery, i);
+                break;
+            default:
+                break;
+            }
+        }
+    }
+    else if (msg == checkFrontInterfacesStatus) {
+        for (int i = 0; i < N_INTERFACES; i++) {
+            switch (frontMonitors[i]->checkStatus(simTime().dbl())) {
+            case InterfaceMonitor::SIGNAL_FAILURE:
+                emit(sigInterfaceFailure, i);
+                break;
+            case InterfaceMonitor::SIGNAL_RECOVERY:
+                emit(sigInterfaceRecovery, i);
+                break;
+            default:
+                break;
+            }
+        }
     }
 }
 
@@ -183,6 +267,11 @@ void BaseProtocol::sendTo(BaseFrame1609_4* frame, enum PlexeRadioInterfaces inte
         }
     }
     delete frame;
+}
+
+void BaseProtocol::setTemporaryLeader(bool tempLeader)
+{
+    temporaryLeader = tempLeader;
 }
 
 std::unique_ptr<BaseFrame1609_4> BaseProtocol::createBeacon(int destinationAddress)
@@ -215,6 +304,7 @@ std::unique_ptr<BaseFrame1609_4> BaseProtocol::createBeacon(int destinationAddre
     pkt->setKind(BEACON_TYPE);
     pkt->setByteLength(packetSize);
     pkt->setSequenceNumber(seq_n++);
+    pkt->setTemporaryLeader(temporaryLeader);
 
     wsm->encapsulate(pkt);
 
@@ -227,32 +317,6 @@ bool BaseProtocol::isDuplicated(const PlatooningBeacon* beacon)
     if (sequenceNumber == knownBeacons.end()) return false;
     if (beacon->getSequenceNumber() > sequenceNumber->second) return false;
     return true;
-}
-
-void BaseProtocol::receiveSignal(cComponent* source, simsignal_t signalID, bool v, cObject* details)
-{
-
-    Enter_Method_Silent();
-    if (signalID == veins::Mac1609_4::sigChannelBusy) {
-        if (v && !channelBusy) {
-            // channel turned busy, was idle before
-            startBusy = simTime();
-            channelBusy = true;
-            channelBusyStart();
-            return;
-        }
-        if (!v && channelBusy) {
-            // channel turned idle, was busy before
-            busyTime += simTime() - startBusy;
-            channelBusy = false;
-            channelIdleStart();
-            return;
-        }
-    }
-    if (signalID == veins::Mac1609_4::sigCollision) {
-        collision();
-        nCollisions++;
-    }
 }
 
 void BaseProtocol::handleMessage(cMessage* msg)
@@ -273,9 +337,20 @@ void BaseProtocol::handleLowerMsg(cMessage* msg)
     ASSERT2(frame, "received a frame not of type BaseFrame1609_4");
 
     cPacket* enc = frame->getEncapsulatedPacket();
-    ASSERT2(enc, "received a BaseFrame1609_4 with nothing inside");
 
     if (PlatooningBeacon* epkt = dynamic_cast<PlatooningBeacon*>(enc)) {
+
+        if (positionHelper->getLeaderId() == epkt->getVehicleId()) {
+            leaderFrames->frameReceived(msg->getArrivalGate()->getIndex(), epkt->getSequenceNumber(), epkt->getCreationTime().dbl(), simTime().dbl());
+            if (!checkLeaderInterfacesStatus->isScheduled())
+                scheduleAt(simTime() + SimTime(50, SimTimeUnit::SIMTIME_MS), checkLeaderInterfacesStatus);
+
+        }
+        if (positionHelper->getFrontId() == epkt->getVehicleId()) {
+            frontFrames->frameReceived(msg->getArrivalGate()->getIndex(), epkt->getSequenceNumber(), epkt->getCreationTime().dbl(), simTime().dbl());
+            if (!checkFrontInterfacesStatus->isScheduled())
+                scheduleAt(simTime() + SimTime(50, SimTimeUnit::SIMTIME_MS), checkFrontInterfacesStatus);
+        }
 
         // if we're using multiple radios simultaneously, we might get duplicated beacons
         if (isDuplicated(epkt)) {
@@ -287,46 +362,28 @@ void BaseProtocol::handleLowerMsg(cMessage* msg)
 
         // invoke messageReceived() method of subclass
         messageReceived(epkt, frame);
-        messageReceived(epkt, frame, (enum PlexeRadioInterfaces) radioIns[msg->getArrivalGateId()]);
 
-        if (positionHelper->getLeaderId() == epkt->getVehicleId()) {
-            // check if this is at least the second message we have received
-            if (lastLeaderMsgTime.dbl() > 0) {
-                leaderDelayOut.record(simTime() - lastLeaderMsgTime);
-                leaderDelayIdOut.record(myId);
-            }
-            lastLeaderMsgTime = simTime();
-        }
-        if (positionHelper->getFrontId() == epkt->getVehicleId()) {
-            // check if this is at least the second message we have received
-            if (lastFrontMsgTime.dbl() > 0) {
-                frontDelayOut.record(simTime() - lastFrontMsgTime);
-                frontDelayIdOut.record(myId);
-            }
-            lastFrontMsgTime = simTime();
-        }
     }
 
     // find the application responsible for this beacon
-    PlexeInterfaceControlInfo* incomingInterface = new PlexeInterfaceControlInfo();
-    auto interface = radioIns.find(msg->getArrivalGateId());
-    if (interface != radioIns.end())
-        incomingInterface->setInterfaces(interface->second);
-    else
-        incomingInterface->setInterfaces(0);
-
     ApplicationMap::iterator app = apps.find(frame->getKind());
     if (app != apps.end() && app->second.size() != 0) {
         AppList applications = app->second;
         for (AppList::iterator i = applications.begin(); i != applications.end(); i++) {
             // send the message to the applications responsible for it
-            auto duplicate = frame->dup();
-            duplicate->setControlInfo(incomingInterface->dup());
-            send(duplicate, std::get<1>(*i));
+            send(frame->dup(), std::get<1>(*i));
         }
     }
-    delete incomingInterface;
     delete frame;
+}
+
+void BaseProtocol::receiveSignal(cComponent* src, simsignal_t id, long value, cObject* details)
+{
+    if (id == lte_stack_phy_handover) {
+        handoverIdOut.record(myId);
+        if (!value) handoverStartOut.record(1);
+        else handoverStartOut.record(0);
+    }
 }
 
 void BaseProtocol::handleUpperMsg(cMessage* msg)
@@ -344,10 +401,6 @@ void BaseProtocol::handleUpperMsg(cMessage* msg)
 }
 
 void BaseProtocol::messageReceived(PlatooningBeacon* pkt, BaseFrame1609_4* frame)
-{
-}
-
-void BaseProtocol::messageReceived(PlatooningBeacon* pkt, BaseFrame1609_4* frame, enum PlexeRadioInterfaces interface)
 {
 }
 
