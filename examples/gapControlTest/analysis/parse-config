@@ -1,0 +1,15 @@
+[DEFAULT]
+defaultMap = default
+file = map-config
+
+[params]
+resdir = ../results
+
+[config]
+config = Platooning
+out = Platooning
+map    = %(defaultMap)s
+mapFile = %(file)s
+prefix = plt
+merge = 1
+
