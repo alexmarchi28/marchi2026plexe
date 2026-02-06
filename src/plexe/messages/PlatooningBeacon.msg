@@ -32,4 +32,5 @@ packet PlatooningBeacon {
     double speedX = 0;
     double speedY = 0;
     double angle = 0;
+    bool temporaryLeader = false;
 }
