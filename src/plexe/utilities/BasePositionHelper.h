@@ -152,6 +152,11 @@ public:
     virtual void dumpVehicleData() const;
 
     /**
+     * Sets (or disables) a temporary leader. If enabled, causes the getLeaderId() function to return such temporary id
+     */
+    virtual void setTemporaryLeader(bool enable, int leaderId = -1);
+
+    /**
      * Returns the active controller for this vehicle
      */
     virtual enum ACTIVE_CONTROLLER getController();
@@ -205,6 +210,9 @@ protected:
     int platoonLane;
     // speed of the platoon
     double platoonSpeed;
+    // temporary leader variables
+    bool enableTemporaryLeader;
+    int temporaryLeaderId;
 
     /** Stores the IDs of vehicles currently in the platoon.
      * The values' order corresponds to that of the platoon.
@@ -243,6 +251,8 @@ public:
         , platoonId(INVALID_PLATOON_ID)
         , platoonLane(-1)
         , platoonSpeed(-1)
+        , enableTemporaryLeader(false)
+        , temporaryLeaderId(-1)
         , positions(DynamicPositionManager::getInstance())
     {
     }
