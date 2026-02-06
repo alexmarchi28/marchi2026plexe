@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2012-2025 Michele Segata <segata@ccs-labs.org>
+// Copyright (C) 2012-2021 Michele Segata <segata@ccs-labs.org>
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 //
@@ -31,9 +31,19 @@ simple BBaseProtocol like BaseProtocol
         int priority;
         //size of platooning messages
         int packetSize;
+        int frameStatsWindow = default(10);
         int headerLength @unit("bit") = default(0bit);
         @display("i=block/network2");
         @class(plexe::BBaseProtocol);
+
+        //amount of time required to declare an interface as recovered
+        double deltaT @unit(s) = default(10s);
+        //PDR threshold use to discriminate between an active and failed interface
+        double pdr11p = 0.8;
+        double pdrCV2X = 0.8;
+        double pdrVLC = 0.6;
+        @signal[org_car2x_plexe_protocols_baseProtocol_sigInterfaceFailure](type="long");
+        @signal[org_car2x_plexe_protocols_baseProtocol_sigInterfaceRecovery](type="long");
     gates:
         input upperLayerIn[10];
         output upperLayerOut[10];

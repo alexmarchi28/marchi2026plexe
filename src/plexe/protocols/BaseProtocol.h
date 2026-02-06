@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2012-2025 Michele Segata <segata@ccs-labs.org>
+// Copyright (C) 2012-2021 Michele Segata <segata@ccs-labs.org>
 //
 // SPDX-License-Identifier: GPL-2.0-or-later
 //
@@ -41,36 +41,238 @@ namespace plexe {
 
 using veins::BaseFrame1609_4;
 
+#define N_INTERFACES 3
+struct frame_t {
+    bool received[N_INTERFACES];
+    double delay[N_INTERFACES];
+    double receiveTime[N_INTERFACES];
+    int seqNr;
+};
+typedef struct frame_t Frame;
+
+class FramesRingBuffer {
+public:
+    FramesRingBuffer(int size)
+        : frames(nullptr)
+        , size(size+1)
+        , head(size)
+        , empty(true)
+        , occupied(0)
+    {
+        frames = new Frame[this->size];
+    }
+    ~FramesRingBuffer()
+    {
+        delete frames;
+        frames = nullptr;
+    }
+    static Frame emptyFrame()
+    {
+        Frame f = Frame();
+        for (int i = 0; i < N_INTERFACES; i++) {
+            f.received[i] = false;
+            f.delay[i] = 0;
+            f.receiveTime[i] = 0;
+        }
+        f.seqNr = -1;
+        return f;
+    }
+    void frameReceived(int interface, int seqNr, double generationTime, double receiveTime)
+    {
+        // first frame in the ring buffer, initialize some stuff
+        if (empty) {
+            insertNewFrame(seqNr);
+            updateHeadFrame(interface, generationTime, receiveTime);
+            empty = false;
+            return;
+        }
+        // an already known frame received from a different interfaces
+        if (frames[head].seqNr == seqNr) {
+            updateHeadFrame(interface, generationTime, receiveTime);
+            return;
+        }
+        // new frame
+        if (frames[head].seqNr < seqNr) {
+            // in case frames are missing completely (not being received from any interface), just add them
+            for (int i = frames[head].seqNr+1; i <= seqNr; i++) insertNewFrame(i);
+            // for the frame that has just been received, set from which interface it has been received
+            updateHeadFrame(interface, generationTime, receiveTime);
+        }
+        // the remaining case is when the sequence number is old
+        // this can happen if the frame has so much delay that it has been received after a new one
+        // this should be unlikely, but in case of VLC with re-propagation and a large number of vehicles in the platoon, this might occur
+        if (frames[head].seqNr > seqNr) {
+            // do we still have this frame in the buffer?
+            if (frames[head].seqNr - seqNr < occupied) {
+                int position = (head + occupied - (frames[head].seqNr - seqNr)) % occupied;
+                updateFrame(position, interface, generationTime, receiveTime);
+            }
+        }
+    }
+    int getIndex(int index)
+    {
+        // 0 === head
+        // size-1 === head - size + 1
+        return (head - index + occupied) % occupied;
+    }
+    void getStats(double fer[N_INTERFACES], double delays[N_INTERFACES], double interarrivals[N_INTERFACES], bool ignoreLast = false)
+    {
+        int received;
+        double delay;
+        double interarrival;
+        double lastReceiveTime;
+        bool first;
+        // if the buffer is not yet full, compute stats on all samples even if ignoreLast is set
+        int firstFrame, lastFrame;
+        if (occupied < size) {
+            firstFrame = 0;
+            lastFrame = occupied;
+        }
+        else {
+            firstFrame = ignoreLast ? 1 : 0;
+            lastFrame = ignoreLast ? occupied : occupied - 1;
+        }
+        for (int i = 0; i < N_INTERFACES; i++) {
+            received = 0;
+            delay = 0;
+            interarrival = 0;
+            first = true;
+            for (int n = firstFrame; n < lastFrame; n++) {
+                Frame* f = &(frames[getIndex(n)]);
+                if (f->received[i]) {
+                    // count a received frame for the fer
+                    received++;
+                    // sum the delay for the average delay
+                    delay += f->delay[i];
+                    // sum the interarrival for the average interarrivals
+                    if (!first) interarrival += lastReceiveTime - f->receiveTime[i];
+                    else first = false;
+                    lastReceiveTime = f->receiveTime[i];
+                }
+            }
+            fer[i] = ((double)(getNFrames() - received)) / getNFrames();
+            if (received > 0) delays[i] = delay / received;
+            else delays[i] = -1;
+            if (received > 1) interarrivals[i] = interarrival / (received-1);
+            else interarrivals[i] = -1;
+        }
+    }
+    int getNFrames()
+    {
+        return occupied < size ? occupied : occupied - 1;
+    }
+
+private:
+    Frame* frames;
+    int size;
+    // pointer to the most recent received frame
+    int head;
+    bool empty;
+    int occupied;
+
+    void insertNewFrame(int seqNr)
+    {
+        head = (head + 1) % size;
+        Frame* f = &frames[head];
+        for (int i = 0; i < N_INTERFACES; i++) {
+            f->received[i] = false;
+            f->delay[i] = 0;
+            f->receiveTime[i] = 0;
+        }
+        f->seqNr = seqNr;
+        occupied = std::min(occupied + 1, size);
+    }
+    void updateHeadFrame(int interface, double generationTime, double receiveTime)
+    {
+        updateFrame(head, interface, generationTime, receiveTime);
+    }
+    void updateFrame(int position, int interface, double generationTime, double receiveTime)
+    {
+        frames[position].received[interface] = true;
+        frames[position].delay[interface] = receiveTime - generationTime;
+        frames[position].receiveTime[interface] = receiveTime;
+    }
+};
+
+class InterfaceMonitor {
+
+public:
+    enum InterfaceStatus {
+        ACTIVE,
+        FAILED
+    };
+    enum CheckStatusResult {
+        SIGNAL_FAILURE,
+        SIGNAL_RECOVERY,
+        NO_CHANGE
+    };
+
+    InterfaceMonitor(FramesRingBuffer* buffer, int interface, double pdrThreshold, double deltaT)
+        : status(ACTIVE)
+        , ringBuffer(buffer)
+        , interface(interface)
+        , pdrThreshold(pdrThreshold)
+        , deltaT(deltaT)
+        , recovered(false)
+    {
+
+    }
+
+    enum CheckStatusResult checkStatus(double currentTime)
+    {
+        double fer[N_INTERFACES];
+        double delays[N_INTERFACES];
+        double interarrivals[N_INTERFACES];
+        ringBuffer->getStats(fer, delays, interarrivals, false);
+        bool pdrBelowThreshold = (1 - fer[interface] < pdrThreshold);
+        enum CheckStatusResult statusResult = NO_CHANGE;
+        // we are in an active state and the PDR is below threshold
+        if (status == ACTIVE && pdrBelowThreshold) {
+            status = FAILED;
+            recovered = false;
+            statusResult = SIGNAL_FAILURE;
+        }
+        // we are in a failed state and the PDR is below threshold
+        else if (status == FAILED && pdrBelowThreshold) {
+            recovered = false;
+        }
+        // we are in a failed state and the PDR is above threshold
+        else if (status == FAILED && !pdrBelowThreshold) {
+            // if this is the first time the PDR goes above threshold ...
+            if (!recovered) {
+                // ... keep track of when the interface first recovers
+                timeOfRecovery = currentTime;
+                recovered = true;
+            }
+            // if the PDR is above the threshold for enough time ...
+            if (currentTime - timeOfRecovery >= deltaT) {
+                // we can signal the recovery and change state to active
+                status = ACTIVE;
+                statusResult = SIGNAL_RECOVERY;
+            }
+            // otherwise we remain in the failed state
+        }
+        return statusResult;
+    }
+
+private:
+
+    enum InterfaceStatus status;
+    FramesRingBuffer* ringBuffer;
+    int interface;
+    double pdrThreshold;
+    double deltaT;
+    double timeOfRecovery;
+    bool recovered;
+
+};
+
 class BaseProtocol : public veins::BaseApplLayer {
 
 private:
-    // amount of time channel has been observed busy during the last "statisticsPeriod" seconds
-    SimTime busyTime;
-    // count the number of collision at the phy layer
-    int nCollisions;
-    // time at which channel turned busy
-    SimTime startBusy;
-    // indicates whether channel is busy or not
-    bool channelBusy;
-
-    // record the delay between each pair of messages received from leader and car in front
-    SimTime lastLeaderMsgTime;
-    SimTime lastFrontMsgTime;
-
-    // own id for statistics
-    cOutVector nodeIdOut;
-
-    // output vectors for busy time and collisions
-    cOutVector busyTimeOut, collisionsOut;
-
-    // output vector for delays
-    cOutVector leaderDelayIdOut, frontDelayIdOut, leaderDelayOut, frontDelayOut;
 
     // map of radio interfaces from radio ids
     std::map<int, cGate*> radioOuts;
-
-    // map of radio gates to radio interfaces type
-    std::map<int, int> radioIns;
 
     // map of known beacons (vehicle id, sequence number)
     std::map<int, int> knownBeacons;
@@ -126,6 +328,38 @@ protected:
     cMessage* sendBeacon;
     cMessage* recordData;
 
+    int frameStatsWindow;
+    // storage for stats about received beacons
+    FramesRingBuffer* leaderFrames;
+    FramesRingBuffer* frontFrames;
+    InterfaceMonitor* leaderMonitors[N_INTERFACES];
+    InterfaceMonitor* frontMonitors[N_INTERFACES];
+    // amount of time required to declare an interface as recovered
+    double deltaT;
+    // PDR threshold use to discriminate between an active and failed interface
+    double pdr11p;
+    double pdrCV2X;
+    double pdrVLC;
+    // set vehicle as temporary leader in beacons
+    bool temporaryLeader;
+
+    // period message used to check for the status of the interfaces
+    cMessage* checkLeaderInterfacesStatus;
+    cMessage* checkFrontInterfacesStatus;
+
+    // frame error rates for leader and front vehicle
+    cOutVector statsIdOut;
+    cOutVector leaderFer11pOut, leaderFerVLCOut, leaderFerLTEOut;
+    cOutVector frontFer11pOut, frontFerVLCOut, frontFerLTEOut;
+    // delay for leader and front vehicle
+    cOutVector leaderDelay11pOut, leaderDelayVLCOut, leaderDelayLTEOut;
+    cOutVector frontDelay11pOut, frontDelayVLCOut, frontDelayLTEOut;
+    // interarrival for leader and front vehicle
+    cOutVector leaderInterarrival11pOut, leaderInterarrivalVLCOut, leaderInterarrivalLTEOut;
+    cOutVector frontInterarrival11pOut, frontInterarrivalVLCOut, frontInterarrivalLTEOut;
+
+    cOutVector handoverIdOut, handoverStartOut;
+
     /**
      * NB: this method must be overridden by inheriting classes, BUT THEY MUST invoke the super class
      * method prior processing the message. For example, the start communication event is handled by the
@@ -145,19 +379,11 @@ protected:
 
     virtual void sendTo(BaseFrame1609_4* frame, enum PlexeRadioInterfaces interfaces);
 
-    // signal handler
-    using BaseApplLayer::receiveSignal;
-    void receiveSignal(cComponent* source, simsignal_t signalID, bool v, cObject* details) override;
-    void receiveSignal(cComponent* source, simsignal_t signalID, bool v)
-    {
-        receiveSignal(source, signalID, v, 0);
-    }
-
     /**
      * Sends a platooning message with all information about the car. This is an utility function for
      * subclasses
      */
-    virtual void sendPlatooningMessage(int destinationAddress, enum PlexeRadioInterfaces interfaces = PlexeRadioInterfaces::ALL);
+    void sendPlatooningMessage(int destinationAddress, enum PlexeRadioInterfaces interfaces = PlexeRadioInterfaces::ALL);
 
     virtual std::unique_ptr<BaseFrame1609_4> createBeacon(int destinationAddress);
 
@@ -171,8 +397,6 @@ protected:
      * \param frame the original frame which was containing pkt
      */
     virtual void messageReceived(PlatooningBeacon* pkt, BaseFrame1609_4* frame);
-
-    virtual void messageReceived(PlatooningBeacon* pkt, BaseFrame1609_4* frame, enum PlexeRadioInterfaces interface);
 
     /**
      * This method must be overridden by subclasses to take decisions
@@ -209,6 +433,10 @@ protected:
     traci::CommandInterface* plexeTraci;
     std::unique_ptr<traci::CommandInterface::Vehicle> plexeTraciVehicle;
 
+    simsignal_t lte_stack_phy_handover;
+
+    virtual void receiveSignal(cComponent* src, simsignal_t id, long value, cObject* details) override;
+
 public:
     // id for beacon message
     static const int BEACON_TYPE;
@@ -218,6 +446,11 @@ public:
         sendBeacon = nullptr;
         recordData = nullptr;
         usedGates = 0;
+        leaderFrames = nullptr;
+        frontFrames = nullptr;
+        checkLeaderInterfacesStatus = nullptr;
+        checkFrontInterfacesStatus = nullptr;
+        temporaryLeader = false;
     }
     virtual ~BaseProtocol();
 
@@ -225,6 +458,12 @@ public:
 
     // register a higher level application by its id
     void registerApplication(int applicationId, InputGate* appInputGate, OutputGate* appOutputGate, ControlInputGate* appControlInputGate, ControlOutputGate* appControlOutputGate);
+
+    // signal to registered applications when an interface fails or recovers (and which one)
+    static const simsignal_t sigInterfaceFailure;
+    static const simsignal_t sigInterfaceRecovery;
+
+    void setTemporaryLeader(bool tempLeader);
 };
 
 } // namespace plexe
