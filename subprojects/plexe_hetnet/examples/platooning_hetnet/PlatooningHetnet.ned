@@ -43,6 +43,7 @@ import org.car2x.veins.subprojects.veins_inet.VeinsInetManagerForker;
 
 import org.car2x.veins.modules.obstacle.VehicleObstacleControl;
 import org.car2x.veinsvlc.VlcConnectionManager;
+import org.car2x.plexe.subprojects.plexe_hetnet.PlatoonCarHetNet;
 
 network PlatooningHetnet
 {
@@ -89,9 +90,9 @@ network PlatooningHetnet
         }
         world: BaseWorldUtility {
             parameters:
-                playgroundSizeX = playgroundSizeX;
-                playgroundSizeY = playgroundSizeY;
-                playgroundSizeZ = playgroundSizeZ;
+                playgroundSizeX = parent.playgroundSizeX;
+                playgroundSizeY = parent.playgroundSizeY;
+                playgroundSizeZ = parent.playgroundSizeZ;
                 @display("p=30,0;i=misc/globe");
         }
         manager: VeinsInetManagerForker {
@@ -112,6 +113,8 @@ network PlatooningHetnet
             parameters:
                 @display("p=146,112;i=abstract/multicast");
         }
+        node[0]: PlatoonCarHetNet {
+        }
 
     connections allowunconnected:
         //router.pppg++ <--> Eth10G <--> pgw.filterGate;
@@ -119,4 +122,3 @@ network PlatooningHetnet
         //pgw.pppg++ <--> Eth10G <--> eNodeB2.ppp;
         //eNodeB1.x2++ <--> Eth10G <--> eNodeB2.x2++;
 }
-

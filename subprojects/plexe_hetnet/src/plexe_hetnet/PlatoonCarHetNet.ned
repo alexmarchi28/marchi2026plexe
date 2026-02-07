@@ -67,15 +67,15 @@ module PlatoonCarHetNet
         //# Apps
         int numApps = default(0);
 
-        //# Node specs
-        string nodeType = "UE";  // DO NOT CHANGE
-        int masterId;
-        int macNodeId = default(0); // TODO: this is not a real parameter
-        int macCellId = default(0); // TODO: this is not a real parameter
+        //# LTE node specs (kept commented for future migration)
+        //string nodeType = "UE";  // DO NOT CHANGE
+        //int masterId;
+        //int macNodeId = default(0); // TODO: this is not a real parameter
+        //int macCellId = default(0); // TODO: this is not a real parameter
 
-        //# D2D capability
-        bool d2dCapable = default(true);
-        string nicType = d2dCapable ? "LteNicUeD2D" : "LteNicUe";
+        //# LTE D2D capability (kept commented for future migration)
+        //bool d2dCapable = default(true);
+        //string nicType = d2dCapable ? "LteNicUeD2D" : "LteNicUe";
 
         //# Network Layer specs
         *.interfaceTableModule = default(absPath(".interfaceTable"));
@@ -85,7 +85,7 @@ module PlatoonCarHetNet
 
 
     gates:
-        input radioIn @directIn; // gate for sendDirect
+        //input radioIn @directIn; // gate for sendDirect (LTE)
         input headLightIn;
         input tailLightIn;
     submodules:
@@ -189,7 +189,6 @@ module PlatoonCarHetNet
 
     connections allowunconnected:
 
-        // LTE stack connections
         // app to tcp and udp
         for i=0..numApps-1 {
             app[i].socketOut --> at.in++;
