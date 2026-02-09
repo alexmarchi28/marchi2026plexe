@@ -32,12 +32,19 @@ import org.car2x.plexe.mobility.TraCIBaseTrafficManager;
 
 //import lte.corenetwork.nodes.eNodeB;
 import inet.node.ethernet.Eth10G;
+import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
+import inet.networklayer.ipv4.RoutingTableRecorder;
 //import lte.corenetwork.binder.LteBinder;
 //import lte.world.radio.LteChannelControl;
 //import lte.common.LteNetworkConfigurator;
 //import lte.epc.PgwStandardSimplified;
 import inet.node.inet.Router;
 import inet.node.inet.StandardHost;
+import simu5g.world.radio.LteChannelControl;
+import simu5g.common.carrierAggregation.CarrierAggregation;
+import simu5g.nodes.Upf;
+import simu5g.common.binder.Binder;
+import simu5g.nodes.NR.gNodeB;
 
 import org.car2x.veins.subprojects.veins_inet.VeinsInetManagerForker;
 
@@ -54,6 +61,38 @@ network PlatooningHetnet
         string traffic_type;
         @display("bgb=1164.825,450.9");
     submodules:
+        //# 5G modules
+        routingRecorder: RoutingTableRecorder {
+            @display("p=50,75;is=s");
+        }
+        configurator: Ipv4NetworkConfigurator {
+            @display("p=50,125");
+            config = xmldoc("demo.xml");
+        }
+        channelControl: LteChannelControl {
+            @display("p=50,25;is=s");
+        }
+        binder: Binder {
+            @display("p=50,175;is=s");
+        }
+        carrierAggregation: CarrierAggregation {
+            @display("p=50.993748,258.7;is=s");
+        }
+        router: Router {
+            @display("p=321,136;i=device/smallrouter");
+        }
+        trafficAuthority: StandardHost {
+            @display("p=212,118;is=n;i=device/server");
+        }
+        upf: Upf {
+            @display("p=462,136");
+        }
+        gNodeB1: gNodeB {
+            @display("p=0,0;is=vl");
+        }
+        gNodeB2: gNodeB {
+            @display("p=1000,0;is=vl");
+        }
         //# LTE modules
         //channelControl: LteChannelControl {
         //    @display("p=50,25;is=s");
@@ -117,6 +156,12 @@ network PlatooningHetnet
         }
 
     connections allowunconnected:
+        trafficAuthority.pppg++ <--> Eth10G <--> router.pppg++;
+        router.pppg++ <--> Eth10G <--> upf.filterGate;
+        upf.pppg++ <--> Eth10G <--> gNodeB1.ppp;
+        upf.pppg++ <--> Eth10G <--> gNodeB2.ppp;
+        gNodeB1.x2++ <--> Eth10G <--> gNodeB2.x2++;
+
         //router.pppg++ <--> Eth10G <--> pgw.filterGate;
         //pgw.pppg++ <--> Eth10G <--> eNodeB1.ppp;
         //pgw.pppg++ <--> Eth10G <--> eNodeB2.ppp;
