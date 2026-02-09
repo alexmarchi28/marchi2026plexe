@@ -43,3 +43,5 @@ subprojects/**/examples/**/valgrind.out
 
 # Eclipse
 .settings/
+.project
+language.settings.xml

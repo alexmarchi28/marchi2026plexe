@@ -5,9 +5,11 @@
 	<projects>
 		<project>inet</project>
 		<project>lte</project>
+		<project>plexe</project>
+		<project>plexe_5g</project>
 		<project>plexe_lte</project>
 		<project>plexe_vlc</project>
-		<project>plexe</project>
+		<project>simu5G</project>
 		<project>veins</project>
 		<project>veins_inet</project>
 		<project>veins-vlc</project>
