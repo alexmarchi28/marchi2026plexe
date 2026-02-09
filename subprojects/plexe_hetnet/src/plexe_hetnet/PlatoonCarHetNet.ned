@@ -34,6 +34,7 @@ import org.car2x.plexe.apps.BaseApp;
 import org.car2x.plexe.driver.Veins11pRadioDriver;
 
 import inet.applications.contract.IApp;
+import inet.linklayer.contract.ILoopbackInterface;
 import inet.mobility.contract.IMobility;
 import inet.networklayer.common.InterfaceTable;
 import inet.networklayer.contract.IRoutingTable;
@@ -43,6 +44,8 @@ import inet.transportlayer.contract.IUdp;
 import inet.transportlayer.tcp.Tcp;
 import inet.transportlayer.udp.Udp;
 import inet.common.MessageDispatcher;
+import simu5g.stack.ICellularNic;
+import org.car2x.plexe.subprojects.plexe_5g.NRCV2XMode1RadioDriver;
 // import lte.stack.ILteNic;
 //import lte.stack.LteNicUe;
 // import lte.stack.LteNicUeD2D;
@@ -77,14 +80,33 @@ module PlatoonCarHetNet
         //bool d2dCapable = default(true);
         //string nicType = d2dCapable ? "LteNicUeD2D" : "LteNicUe";
 
+        //# 5G/NR node specs
+        int masterId @mutable = default(0);
+        int macNodeId @mutable = default(0); // required by Simu5G stack
+        int macCellId @mutable = default(0); // required by Simu5G stack
+        string nrNodeType = "UE";  // DO NOT CHANGE
+        int nrMasterId @mutable = default(0);
+        int nrMacNodeId @mutable = default(0); // TODO: this is not a real parameter
+        int nrMacCellId @mutable = default(0); // TODO: this is not a real parameter
+        string nrNicType = default("NRNicUe");
+        int numLoInterfaces = default(1);
+        bool hasIpv4 = default(true);
+        bool hasIpv6 = default(false);
+        string extHostAddress = default("");
+        bool hasRNISupport = default(false);
+
         //# Network Layer specs
         *.interfaceTableModule = default(absPath(".interfaceTable"));
         *.routingTableModule = default(absPath(".ipv4.routingTable"));
+        ipv4.configurator.typename = "HostAutoConfigurator";
+        ipv4.configurator.interfaces = "cellular lo0";
 
         bool enableExtInterface = default(false);
 
 
     gates:
+        input radioIn @directIn; // gate for sendDirect (5G)
+        input nrRadioIn @directIn;
         //input radioIn @directIn; // gate for sendDirect (LTE)
         input headLightIn;
         input tailLightIn;
@@ -131,6 +153,15 @@ module PlatoonCarHetNet
         mobility: <mobilityType> like IMobility {
             @display("p=50,175;is=s");
         }
+        lo[numLoInterfaces]: <default("LoopbackInterface")> like ILoopbackInterface {
+            parameters:
+                @display("p=503.736,589.50397,row,150");
+        }
+        cellularNic: <nrNicType> like ICellularNic {
+            parameters:
+                nodeType = parent.nrNodeType;
+                @display("p=355.152,589.50397");
+        }
         //lteNic: <nicType> like ILteNic {
         //    nodeType = nodeType;
         //    d2dCapable = d2dCapable;
@@ -161,6 +192,12 @@ module PlatoonCarHetNet
         nl: MessageDispatcher {
             parameters:
                 @display("p=750,146;b=1000,5,,,,1");
+        }
+        nrCV2XMode1Driver: NRCV2XMode1RadioDriver {
+            parameters:
+                @display("p=655.752,74.76,row");
+                destinationPort = 3000;
+                multicastAddress = "224.0.0.1";
         }
         //lteCV2XMode3Driver: LTECV2XMode3RadioDriver {
         //    @display("p=250.98,111.072,row");
@@ -215,6 +252,15 @@ module PlatoonCarHetNet
         nl.out++ --> ipv4.ifIn;
         nl.in++ <-- ipv4.ifOut;
 
+        cellularNic.upperLayerOut --> nl.in++;
+        cellularNic.upperLayerIn <-- nl.out++;
+        for i=0..numLoInterfaces-1 {
+            nl.out++ --> lo[i].upperLayerIn;
+            lo[i].upperLayerOut --> nl.in++;
+        }
+        cellularNic.radioIn <-- radioIn;
+        cellularNic.nrRadioIn <-- nrRadioIn;
+
         //nl.out++ --> lteNic.upperLayerIn;
         //nl.in++ <-- lteNic.upperLayerOut;
 
@@ -225,6 +271,12 @@ module PlatoonCarHetNet
         nic.upperLayerOut --> veins11pDriver.lowerLayerIn;
         veins11pDriver.upperLayerIn <-- prot.radiosOut++;
         veins11pDriver.upperLayerOut --> prot.radiosIn++;
+
+        nrCV2XMode1Driver.upperLayerIn <-- prot.radiosOut++;
+        nrCV2XMode1Driver.upperLayerOut --> prot.radiosIn++;
+        nrCV2XMode1Driver.socketOut --> at.in++;
+        nrCV2XMode1Driver.socketIn <-- at.out++;
+
         //LTE D2D connections
         //lteCV2XMode3Driver.upperLayerIn <-- prot.radiosOut++;
         //lteCV2XMode3Driver.upperLayerOut --> prot.radiosIn++;
