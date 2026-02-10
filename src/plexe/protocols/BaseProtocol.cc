@@ -342,13 +342,13 @@ void BaseProtocol::handleLowerMsg(cMessage* msg)
 
         if (positionHelper->getLeaderId() == epkt->getVehicleId()) {
             leaderFrames->frameReceived(msg->getArrivalGate()->getIndex(), epkt->getSequenceNumber(), epkt->getCreationTime().dbl(), simTime().dbl());
-            if (!checkLeaderInterfacesStatus->isScheduled())
+            if (checkLeaderInterfacesStatus && !checkLeaderInterfacesStatus->isScheduled())
                 scheduleAt(simTime() + SimTime(50, SimTimeUnit::SIMTIME_MS), checkLeaderInterfacesStatus);
 
         }
         if (positionHelper->getFrontId() == epkt->getVehicleId()) {
             frontFrames->frameReceived(msg->getArrivalGate()->getIndex(), epkt->getSequenceNumber(), epkt->getCreationTime().dbl(), simTime().dbl());
-            if (!checkFrontInterfacesStatus->isScheduled())
+            if (checkFrontInterfacesStatus && !checkFrontInterfacesStatus->isScheduled())
                 scheduleAt(simTime() + SimTime(50, SimTimeUnit::SIMTIME_MS), checkFrontInterfacesStatus);
         }
 
@@ -377,12 +377,25 @@ void BaseProtocol::handleLowerMsg(cMessage* msg)
     delete frame;
 }
 
+void BaseProtocol::receiveSignal(cComponent* src, simsignal_t id, bool value, cObject* details)
+{
+    if (id == lte_stack_phy_handover) {
+        handoverIdOut.record(myId);
+        handoverStartOut.record(value ? 0 : 1);
+    }
+    else {
+        BaseApplLayer::receiveSignal(src, id, value, details);
+    }
+}
+
 void BaseProtocol::receiveSignal(cComponent* src, simsignal_t id, long value, cObject* details)
 {
     if (id == lte_stack_phy_handover) {
         handoverIdOut.record(myId);
-        if (!value) handoverStartOut.record(1);
-        else handoverStartOut.record(0);
+        handoverStartOut.record(value ? 0 : 1);
+    }
+    else {
+        BaseApplLayer::receiveSignal(src, id, value, details);
     }
 }
 

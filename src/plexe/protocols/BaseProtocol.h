@@ -435,6 +435,8 @@ protected:
 
     simsignal_t lte_stack_phy_handover;
 
+    using BaseApplLayer::receiveSignal;
+    virtual void receiveSignal(cComponent* src, simsignal_t id, bool value, cObject* details) override;
     virtual void receiveSignal(cComponent* src, simsignal_t id, long value, cObject* details) override;
 
 public:
