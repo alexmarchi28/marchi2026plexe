@@ -584,8 +584,13 @@ void GeneralPlatooningApp::init()
 {
     i = N_INTERFACES;
     state = FOLLOW;
-    plexeTraciVehicle->setActiveController(C_i[i]);
-    setControllerGap(h_i[i], d_i[i]);
+    // Keep the leader on ACC as configured by traffic/scenario initialization.
+    // Applying C_i[i] to the leader can force CACC settings intended for followers,
+    // which destabilizes shockwave experiments.
+    if (!positionHelper->isLeader()) {
+        plexeTraciVehicle->setActiveController(C_i[i]);
+        setControllerGap(h_i[i], d_i[i]);
+    }
     tempLeaders.insert(0);
     protocol->setTemporaryLeader(false);
 
