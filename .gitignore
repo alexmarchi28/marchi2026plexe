@@ -40,3 +40,4 @@ subprojects/**/examples/**/valgrind.out
 **.vci
 **.csv
 **.sca
+.settings/
