@@ -41,3 +41,9 @@ subprojects/**/examples/**/valgrind.out
 **.csv
 **.sca
 .settings/
+
+# generated plots from plexe_hetnet analysis
+subprojects/plexe_hetnet/examples/platooning_hetnet/analysis/*.pdf
+subprojects/plexe_hetnet/examples/platooning_hetnet/analysis/*.tex
+subprojects/plexe_hetnet/examples/platooning_hetnet/analysis/dynamics-plots/*.pdf
+subprojects/plexe_hetnet/examples/platooning_hetnet/analysis/dynamics-plots/*.tex
