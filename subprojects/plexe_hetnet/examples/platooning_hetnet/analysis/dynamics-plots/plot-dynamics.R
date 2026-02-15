@@ -36,7 +36,7 @@ plot.graph <- function(outputFile, dynamics, events, field, xlims, ylims, scenar
     yl <- ylims[[toString(scenario)]][[field]]
     plot.window(xlim=xlims[[toString(scenario)]][[field]], ylim=yl, yaxs="i", xaxs="i")
 
-    if (!is.na(handovers)) {
+    if (!all(is.na(handovers))) {
         l.ho <- subset(handovers, handoverStart == 1 & handoverId == 0)
         for (tm in l.ho$time) {
             ho.event <- subset(handovers, time > tm - 10 & time < tm + 10)
@@ -200,7 +200,7 @@ plot.dynamics <- function(config, dynamics, events, handovers=NA) {
                     if (j == 0) next;
                     dyn <- subset(dynamics, scenario == i & useTempLeader == j & runNumber == n)
                     ev <- subset(events, scenario == i & useTempLeader == j & runNumber == n)
-                    if (!is.na(handovers)) ho <- subset(handovers, runNumber == n)
+                    if (!all(is.na(handovers))) ho <- subset(handovers, runNumber == n)
                     else ho <- NA
 
                     d.name <- paste(config, "distance", i, j, sep="-")

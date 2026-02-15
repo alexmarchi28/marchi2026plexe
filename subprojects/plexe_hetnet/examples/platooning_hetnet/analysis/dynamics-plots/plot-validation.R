@@ -29,7 +29,7 @@ plot.validation <- function(outputFile, dynamics, field, xlims, ylims, yaxis, ha
     plot.new()
     plot.window(xlim=xlims[[field]][[lims.selector]], ylim=ylims[[field]][[lims.selector]], yaxs="i", xaxs="i")
 
-    if (!is.na(handovers)) {
+    if (!all(is.na(handovers))) {
         handovers <- subset(handovers, handoverStart == 1)
         abline(v=handovers$time, col=handovers$handoverId+1, lwd=2, lty=2)
     }

@@ -43,7 +43,7 @@ plot.fer <- function(outputFile, fer, field, yaxis, handovers=NA, xvalues=T) {
             lines(x$time, transf(x[[paste0(field, t)]], t), , col=id+1, lty=id+1, lwd=2)
         }
     })
-    if (!is.na(handovers)) {
+    if (!all(is.na(handovers))) {
         l.ho <- subset(handovers, handoverStart == 1 & handoverId == 0)
         for (tm in l.ho$time) {
             ho.event <- subset(handovers, time > tm - 10 & time < tm + 10)
@@ -73,7 +73,7 @@ plot.fer <- function(outputFile, fer, field, yaxis, handovers=NA, xvalues=T) {
 plot.fers <- function(config, fer, handovers=NA) {
     for (n in unique(fer$runNumber)) {
         f <- subset(fer, runNumber == n)
-        if (!is.na(handovers)) ho <- subset(handovers, runNumber == n)
+        if (!all(is.na(handovers))) ho <- subset(handovers, runNumber == n)
         else ho <- NA
         for (xvalues in c(T, F)) {
             l.name <- paste(config, "leader-fer", n, sep="-")
