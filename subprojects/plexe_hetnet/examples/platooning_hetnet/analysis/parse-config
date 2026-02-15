@@ -1,0 +1,140 @@
+[DEFAULT]
+file = map-config
+
+[params]
+resdir = ../results
+
+[config]
+config = HetNet
+out = HetNet
+map    = network
+mapFile = %(file)s
+prefix = nw
+merge = 1
+type = Rdata
+
+[config]
+config = HetNet
+out = HetNetHandover
+map    = handover
+mapFile = %(file)s
+prefix = ho
+merge = 1
+type = Rdata
+
+[config]
+config = ArtificialFailures
+out = ArtificialFailuresEvents
+map    = events
+mapFile = %(file)s
+prefix = ev
+merge = 1
+type = Rdata
+
+[config]
+config = ArtificialFailures
+out = ArtificialFailuresDynamics
+map    = dynamics
+mapFile = %(file)s
+prefix = dn
+merge = 1
+type = Rdata
+
+[config]
+config = ACCOnly
+out = ACCOnlyEvents
+map    = events
+mapFile = %(file)s
+prefix = aev
+merge = 1
+type = Rdata
+
+[config]
+config = ACCOnly
+out = ACCOnlyDynamics
+map    = dynamics
+mapFile = %(file)s
+prefix = adn
+merge = 1
+type = Rdata
+
+[config]
+config = MultipleArtificialFailures
+out = MultipleArtificialFailuresEvents
+map    = events
+mapFile = %(file)s
+prefix = mev
+merge = 1
+type = Rdata
+
+[config]
+config = MultipleArtificialFailures
+out = MultipleArtificialFailuresDynamics
+map    = dynamics
+mapFile = %(file)s
+prefix = mdn
+merge = 1
+type = Rdata
+
+[config]
+config = SimultaneousArtificialFailures
+out = SimultaneousArtificialFailuresEvents
+map    = events
+mapFile = %(file)s
+prefix = sev
+merge = 1
+type = Rdata
+
+[config]
+config = SimultaneousArtificialFailures
+out = SimultaneousArtificialFailuresDynamics
+map    = dynamics
+mapFile = %(file)s
+prefix = sdn
+merge = 1
+type = Rdata
+
+[config]
+config = InterferenceScenario
+out = InterferenceScenarioEvents
+map    = events
+mapFile = %(file)s
+prefix = iev
+merge = 1
+type = Rdata
+
+[config]
+config = InterferenceScenario
+out = InterferenceScenarioDynamics
+map    = dynamics
+mapFile = %(file)s
+prefix = idn
+merge = 1
+type = Rdata
+
+[config]
+config = InterferenceScenario
+out = InterferenceScenarioHandovers
+map    = handover
+mapFile = %(file)s
+prefix = iho
+merge = 1
+type = Rdata
+
+[config]
+config = InterferenceScenario
+out = InterferenceScenarioFER
+map    = fer
+mapFile = %(file)s
+prefix = inw
+merge = 1
+type = Rdata
+
+[config]
+config = Validation
+out = ValidationDynamics
+map    = validationdynamics
+mapFile = %(file)s
+prefix = vdn
+merge = 1
+type = Rdata

@@ -1,0 +1,41 @@
+#default setup
+[default]
+module = Highway.node[*].appl
+names = nodeId,distance,relativeSpeed,speed,acceleration,controllerAcceleration
+2 = controller
+3 = headway
+4 = runNumber
+
+[network]
+module = Highway.node[*].prot
+names = statsId,leaderFer11p,leaderFerVLC,leaderFerLTE,leaderDelay11p,leaderDelayVLC,leaderDelayLTE,leaderInterarrival11p,leaderInterarrivalVLC,leaderInterarrivalLTE,frontFer11p,frontFerVLC,frontFerLTE,frontDelay11p,frontDelayVLC,frontDelayLTE,frontInterarrival11p,frontInterarrivalVLC,frontInterarrivalLTE
+2 = controller
+3 = headway
+4 = runNumber
+
+[handover]
+module = Highway.node[*].prot
+names = handoverId,handoverStart
+4 = runNumber
+
+[events]
+module = Highway*.*.*
+names = eventVehicleId,eventFailure,eventInterface
+2 = scenario
+3 = useTempLeader
+4 = runNumber
+
+[dynamics]
+inherit = events
+names = nodeId,distance,acceleration,speed,controllerAcceleration
+
+[fer]
+inherit = events
+module = Highway.node[*].prot
+names = statsId,leaderFer11p,leaderFerVLC,leaderFerLTE,leaderDelay11p,leaderDelayVLC,leaderDelayLTE,leaderInterarrival11p,leaderInterarrivalVLC,leaderInterarrivalLTE,frontFer11p,frontFerVLC,frontFerLTE,frontDelay11p,frontDelayVLC,frontDelayLTE,frontInterarrival11p,frontInterarrivalVLC,frontInterarrivalLTE
+
+[validationdynamics]
+module = Highway*.*.*
+names = nodeId,distance,acceleration,speed,controllerAcceleration
+2 = interface
+3 = runNumber
