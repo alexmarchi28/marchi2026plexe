@@ -46,10 +46,6 @@ import inet.transportlayer.udp.Udp;
 import inet.common.MessageDispatcher;
 import simu5g.stack.ICellularNic;
 import org.car2x.plexe.subprojects.plexe_5g.NRCV2XMode1RadioDriver;
-// import lte.stack.ILteNic;
-//import lte.stack.LteNicUe;
-// import lte.stack.LteNicUeD2D;
-// import org.car2x.plexe.subprojects.plexe_lte.LTECV2XMode3RadioDriver;
 
 import org.car2x.plexe.subprojects.plexe_vlc.VeinsVLCRadioDriver;
 import org.car2x.veinsvlc.NicVlc;
@@ -69,16 +65,6 @@ module PlatoonCarHetNet
 
         //# Apps
         int numApps = default(0);
-
-        //# LTE node specs (kept commented for future migration)
-        //string nodeType = "UE";  // DO NOT CHANGE
-        //int masterId;
-        //int macNodeId = default(0); // TODO: this is not a real parameter
-        //int macCellId = default(0); // TODO: this is not a real parameter
-
-        //# LTE D2D capability (kept commented for future migration)
-        //bool d2dCapable = default(true);
-        //string nicType = d2dCapable ? "LteNicUeD2D" : "LteNicUe";
 
         //# 5G/NR node specs
         int masterId @mutable = default(0);
@@ -107,7 +93,6 @@ module PlatoonCarHetNet
     gates:
         input radioIn @directIn; // gate for sendDirect (5G)
         input nrRadioIn @directIn;
-        //input radioIn @directIn; // gate for sendDirect (LTE)
         input headLightIn;
         input tailLightIn;
     submodules:
@@ -162,11 +147,6 @@ module PlatoonCarHetNet
                 nodeType = parent.nrNodeType;
                 @display("p=355.152,589.50397");
         }
-        //lteNic: <nicType> like ILteNic {
-        //    nodeType = nodeType;
-        //    d2dCapable = d2dCapable;
-        //    @display("p=252,469");
-        //}
         // network layer
         ipv4: <default("Ipv4NetworkLayer")> like INetworkLayer {
             parameters:
@@ -199,11 +179,6 @@ module PlatoonCarHetNet
                 destinationPort = 3000;
                 multicastAddress = "224.0.0.1";
         }
-        //lteCV2XMode3Driver: LTECV2XMode3RadioDriver {
-        //    @display("p=250.98,111.072,row");
-        //    destinationPort = 3000;
-        //    multicastAddress = "224.0.0.1";
-        //}
 
         veinsVlcDriver: VeinsVLCRadioDriver {
             parameters:
@@ -261,11 +236,6 @@ module PlatoonCarHetNet
         cellularNic.radioIn <-- radioIn;
         cellularNic.nrRadioIn <-- nrRadioIn;
 
-        //nl.out++ --> lteNic.upperLayerIn;
-        //nl.in++ <-- lteNic.upperLayerOut;
-
-        //lteNic.radioIn <-- radioIn;
-
         //11p stack connections
         nic.upperLayerIn <-- veins11pDriver.lowerLayerOut;
         nic.upperLayerOut --> veins11pDriver.lowerLayerIn;
@@ -276,12 +246,6 @@ module PlatoonCarHetNet
         nrCV2XMode1Driver.upperLayerOut --> prot.radiosIn++;
         nrCV2XMode1Driver.socketOut --> at.in++;
         nrCV2XMode1Driver.socketIn <-- at.out++;
-
-        //LTE D2D connections
-        //lteCV2XMode3Driver.upperLayerIn <-- prot.radiosOut++;
-        //lteCV2XMode3Driver.upperLayerOut --> prot.radiosIn++;
-        //lteCV2XMode3Driver.socketOut --> at.in++;
-        //lteCV2XMode3Driver.socketIn <-- at.out++;
         //VLC connections
         veinsVlcDriver.upperLayerIn <-- prot.radiosOut++;
         veinsVlcDriver.upperLayerOut --> prot.radiosIn++;

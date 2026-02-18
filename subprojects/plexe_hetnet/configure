@@ -82,7 +82,6 @@ simulte = Library(name="SimuLTE", library="lte",
 
 libraries = LibraryChecker()
 libraries.add_lib(plexe)
-#libraries.add_lib(plexe_lte)
 libraries.add_lib(plexe_vlc)
 libraries.add_lib(plexe_5g)
 libraries.add_lib(veins)
@@ -90,7 +89,6 @@ libraries.add_lib(veins_inet)
 libraries.add_lib(veins_vlc)
 libraries.add_lib(inet)
 libraries.add_lib(simu5g)
-#libraries.add_lib(simulte)
 
 # Start with default flags
 makemake_flags = ["-f", "--deep", "--make-so", "-I", ".", "-o", "plexe_hetnet", "-O", "out", "-p", "PLEXE_HETNET"]
