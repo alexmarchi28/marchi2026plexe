@@ -21,7 +21,17 @@ def get_params(filename, fields, suffix=".vec"):
     # p[f] is the value of the parameter
     # fields[f] is the name of the parameter
     param_names = [f for f in fields.values()]
-    values = [[int(p[f]) if p[f].isnumeric() else float(p[f]) for f in fields.keys()]]
+    row = []
+    for f in fields.keys():
+        if f >= len(p):
+            row.append(float("nan"))
+            continue
+        token = p[f]
+        try:
+            row.append(int(token) if token.isnumeric() else float(token))
+        except ValueError:
+            row.append(float("nan"))
+    values = [row]
     d = DataFrame(values, columns=param_names)
     return d
 
@@ -114,5 +124,4 @@ def import_omnetpp_python_module():
     except ModuleNotFoundError:
         return None
     return results
-
 

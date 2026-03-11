@@ -19,6 +19,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import re
 from os.path import basename, dirname, join
 from sys import argv, exit
 
@@ -43,7 +44,10 @@ def get_selector(module, names):
     # since omnnet 6, the selector format has changed
     # sel = "(module({}) AND ({}))".format(module, all_names)
     all_names = " OR ".join(names)
-    sel = "module=~\"{}\" AND ({})".format(module, all_names)
+    # Module filtering is applied in Python after loading vectors because
+    # OMNeT++ Python filter expression semantics differ from scavetool for
+    # wildcard-like module patterns used in map-config.
+    sel = "({})".format(all_names)
     return sel
 
 
@@ -51,9 +55,37 @@ def get_vector_names(d):
     return results.get_vectors(d)[NAME].unique()
 
 
-def load_vectors_shaped(vecFile, selector):
+def get_expected_columns(name_selectors):
+    """
+    Convert map-config selectors (e.g., name=~"speed:vector") into
+    canonical output column names (e.g., speed), preserving order.
+    """
+    cols = []
+    for sel in name_selectors:
+        if "\"" not in sel:
+            continue
+        try:
+            name = sel.split("\"")[1]
+        except IndexError:
+            continue
+        if name.endswith(":vector"):
+            name = name.replace(":vector", "")
+        if name not in cols:
+            cols.append(name)
+    return cols
+
+
+def load_vectors_shaped(vecFile, selector, expected_columns=None, module_pattern=None):
     d = results.read_result_files(vecFile, filter_expression=selector)
+    if module_pattern is not None:
+        module_regex = re.escape(module_pattern)
+        module_regex = module_regex.replace(r"\[\*\]", r"\[[0-9]+\]")
+        module_regex = module_regex.replace(r"\*", ".*")
+        module_regex = "^{}$".format(module_regex)
+        d = d[d[MODULE].astype(str).str.match(module_regex)]
     vector_names = get_vector_names(d)
+    if expected_columns is None:
+        expected_columns = []
     result = DataFrame()
     merge_columns = [MODULE, VECTIME]
     for v in vector_names:
@@ -66,7 +98,7 @@ def load_vectors_shaped(vecFile, selector):
             result = vectors
         else:
             result = merge(result, vectors, left_on=merge_columns,
-                           right_on=merge_columns)
+                           right_on=merge_columns, how="outer")
 
     result = result.rename(columns={VECTIME: "time"})
     columns = result.columns
@@ -75,7 +107,10 @@ def load_vectors_shaped(vecFile, selector):
         if c.endswith(":vector"):
             rename[c] = c.replace(":vector", "")
     result = result.rename(columns=rename)
-    result = result.drop(columns=MODULE)
+    result = result.drop(columns=MODULE, errors="ignore")
+    for c in expected_columns:
+        if c not in result.columns:
+            result[c] = None
     return result
 
 
@@ -131,7 +166,8 @@ def main():
     print("run: {}".format(params.iloc[0]["runNumber"]))
 
     selector = get_selector(map_data[config][MODULE], map_data[config][NAMES])
-    data = load_vectors_shaped(infile, selector)
+    expected_columns = get_expected_columns(map_data[config][NAMES])
+    data = load_vectors_shaped(infile, selector, expected_columns, map_data[config][MODULE])
     data.to_csv(outfile, index=False)
 
 

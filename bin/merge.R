@@ -73,7 +73,14 @@ if (length(args) != 0) {
                 runData <- read.csv(x)
             }
             params <- get.params(x, map[[config]]$fields, suffix=paste(".", outtype, sep=""))
-            runData <- cbind(runData, params)
+            if (nrow(runData) == 0) {
+                # Preserve parameter columns even when a run exported no samples.
+                for (n in names(params)) {
+                    runData[[n]] <- numeric(0)
+                }
+            } else {
+                runData <- cbind(runData, params)
+            }
             runData
         })
         cat("Merging...\n")
