@@ -74,7 +74,7 @@ if (length(args) != 0) {
             runData
         })
         cat("Merging...\n")
-        rbindlist(datalist)
+        rbindlist(datalist, use.names=TRUE, fill=TRUE)
     }
     allData = multmerge(files)
     cat("Saving to", outfile, "...\n")

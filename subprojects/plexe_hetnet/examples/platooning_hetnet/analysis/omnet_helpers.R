@@ -21,8 +21,13 @@
 #
 
 library(omnetpp)
-if (!suppressWarnings(require(reshape, warn.conflicts = F, quietly=T))) {
-    library(reshape2, warn.conflicts = F)
+
+# The OMNeT++ 6 parser fallback only needs the helpers below; keep legacy
+# reshape packages optional so analysis can run on leaner R installations.
+has.reshape <- suppressWarnings(require(reshape, warn.conflicts = F, quietly=T))
+has.reshape2 <- FALSE
+if (!has.reshape) {
+    has.reshape2 <- suppressWarnings(require(reshape2, warn.conflicts = F, quietly=T))
 }
 
 rVersion4OrGreater <- function() {
@@ -98,6 +103,9 @@ listVectors <- function(vecFiles, ...){
 }
 
 print.runs <- function(vecFiles) {
+    if (!has.reshape && !has.reshape2) {
+        stop("print.runs requires either the reshape or reshape2 R package")
+    }
     d <- loadDataset(vecFiles)
     print(cast(d$runattrs, runid~attrname, value='attrvalue'))
 }

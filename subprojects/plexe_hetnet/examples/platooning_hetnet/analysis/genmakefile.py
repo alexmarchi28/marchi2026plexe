@@ -110,7 +110,7 @@ def get_longer(configs):
 
 # output some variables
 print("# tool for indexing vec files")
-print("SCAVETOOL = scavetool")
+print("SCAVETOOL = opp_scavetool")
 print("# scripts location")
 print("SCRIPTDIR = .")
 print("# results location")

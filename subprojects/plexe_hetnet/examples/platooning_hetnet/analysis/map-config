@@ -14,7 +14,7 @@ names = statsId,leaderFer11p,leaderFerVLC,leaderFerLTE,leaderDelay11p,leaderDela
 4 = runNumber
 
 [handover]
-module = *.node[*].prot
+module = *.node[*].cellularNic.nrPhy
 names = handoverId,handoverStart
 4 = runNumber
 
