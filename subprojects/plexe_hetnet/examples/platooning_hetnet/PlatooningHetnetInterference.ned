@@ -1,0 +1,137 @@
+//
+// Copyright (C) 2008-2025 Christoph Sommer <christoph.sommer@informatik.uni-erlangen.de>
+// Copyright (C) 2012-2025 Michele Segata <segata@ccs-labs.org>
+// Copyright (C) 2020-2025 Piermaria Arvani <piermaria.arvani@gmail.com>
+//
+//
+// Documentation for these modules is at http://veins.car2x.org/
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+//
+
+import org.car2x.veins.base.connectionManager.ConnectionManager;
+import org.car2x.veins.base.modules.BaseWorldUtility;
+import org.car2x.veins.modules.obstacle.ObstacleControl;
+import org.car2x.veins.modules.world.annotations.AnnotationManager;
+import org.car2x.veins.nodes.RSU;
+
+import org.car2x.plexe.PlexeManager;
+import org.car2x.plexe.mobility.TraCIBaseTrafficManager;
+
+import inet.node.ethernet.Eth10G;
+import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
+import inet.networklayer.ipv4.RoutingTableRecorder;
+import inet.node.inet.Router;
+import inet.node.inet.StandardHost;
+import simu5g.world.radio.LteChannelControl;
+import simu5g.common.carrierAggregation.CarrierAggregation;
+import simu5g.nodes.Upf;
+import simu5g.common.binder.Binder;
+import simu5g.nodes.NR.gNodeB;
+
+import org.car2x.veins.subprojects.veins_inet.VeinsInetManagerForker;
+
+import org.car2x.veins.modules.obstacle.VehicleObstacleControl;
+import org.car2x.veinsvlc.VlcConnectionManager;
+import org.car2x.plexe.subprojects.plexe_hetnet.PlatoonCarHetNet;
+
+network PlatooningHetnetInterference
+{
+    parameters:
+        double playgroundSizeX @unit(m);
+        double playgroundSizeY @unit(m);
+        double playgroundSizeZ @unit(m);
+        string traffic_type;
+        @display("bgb=dropUnit($playgroundSizeX),dropUnit($playgroundSizeY)");
+    submodules:
+        routingRecorder: RoutingTableRecorder {
+            @display("p=50,75;is=s");
+        }
+        configurator: Ipv4NetworkConfigurator {
+            @display("p=50,125");
+            config = xmldoc("demo.xml");
+        }
+        channelControl: LteChannelControl {
+            @display("p=50,25;is=s");
+        }
+        binder: Binder {
+            @display("p=50,175;is=s");
+        }
+        carrierAggregation: CarrierAggregation {
+            @display("p=50.993748,258.7;is=s");
+        }
+        router: Router {
+            @display("p=321,136;i=device/smallrouter");
+        }
+        trafficAuthority: StandardHost {
+            @display("p=212,118;is=n;i=device/server");
+        }
+        upf: Upf {
+            @display("p=462,136");
+        }
+        gNodeB1: gNodeB {
+            @display("p=0,0;is=vl");
+        }
+        gNodeB2: gNodeB {
+            @display("p=1000,0;is=vl");
+        }
+        obstacles: ObstacleControl {
+            @display("p=240,50");
+        }
+        annotations: AnnotationManager {
+            @display("p=260,50");
+        }
+        connectionManager: ConnectionManager {
+            parameters:
+                @display("p=150,0;i=abstract/multicast");
+        }
+        world: BaseWorldUtility {
+            parameters:
+                playgroundSizeX = parent.playgroundSizeX;
+                playgroundSizeY = parent.playgroundSizeY;
+                playgroundSizeZ = parent.playgroundSizeZ;
+                @display("p=30,0;i=misc/globe");
+        }
+        manager: VeinsInetManagerForker {
+            parameters:
+                @display("p=512,128");
+        }
+        plexe: PlexeManager {
+            @display("p=280,50");
+        }
+        traffic: <traffic_type> like TraCIBaseTrafficManager {
+            parameters:
+                @display("p=200,200");
+        }
+        vehicleObstacles: VehicleObstacleControl {
+            @display("p=261,35");
+        }
+        vlcConnectionManager: VlcConnectionManager {
+            parameters:
+                @display("p=146,112;i=abstract/multicast");
+        }
+        rsu[2]: RSU {
+            @display("p=250,40;i=veins/sign/yellowdiamond;is=vs");
+        }
+        node[0]: PlatoonCarHetNet {
+        }
+
+    connections allowunconnected:
+        trafficAuthority.pppg++ <--> Eth10G <--> router.pppg++;
+        router.pppg++ <--> Eth10G <--> upf.filterGate;
+        upf.pppg++ <--> Eth10G <--> gNodeB1.ppp;
+        upf.pppg++ <--> Eth10G <--> gNodeB2.ppp;
+        gNodeB1.x2++ <--> Eth10G <--> gNodeB2.x2++;
+}
