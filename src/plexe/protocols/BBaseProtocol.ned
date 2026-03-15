@@ -38,6 +38,8 @@ simple BBaseProtocol like BaseProtocol
 
         //amount of time required to declare an interface as recovered
         double deltaT @unit(s) = default(10s);
+        // minimum number of frames required before interface failures can be declared
+        int minFramesForFailure = default(10);
         //PDR threshold use to discriminate between an active and failed interface
         double pdr11p = 0.8;
         double pdrCV2X = 0.8;

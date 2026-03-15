@@ -207,12 +207,13 @@ public:
         NO_CHANGE
     };
 
-    InterfaceMonitor(FramesRingBuffer* buffer, int interface, double pdrThreshold, double deltaT)
+    InterfaceMonitor(FramesRingBuffer* buffer, int interface, double pdrThreshold, double deltaT, int minFramesForFailure)
         : status(ACTIVE)
         , ringBuffer(buffer)
         , interface(interface)
         , pdrThreshold(pdrThreshold)
         , deltaT(deltaT)
+        , minFramesForFailure(minFramesForFailure)
         , recovered(false)
     {
 
@@ -223,6 +224,7 @@ public:
         double fer[N_INTERFACES];
         double delays[N_INTERFACES];
         double interarrivals[N_INTERFACES];
+        if (ringBuffer->getNFrames() < minFramesForFailure) return NO_CHANGE;
         ringBuffer->getStats(fer, delays, interarrivals, false);
         bool pdrBelowThreshold = (1 - fer[interface] < pdrThreshold);
         enum CheckStatusResult statusResult = NO_CHANGE;
@@ -262,6 +264,7 @@ private:
     int interface;
     double pdrThreshold;
     double deltaT;
+    int minFramesForFailure;
     double timeOfRecovery;
     bool recovered;
 
@@ -336,6 +339,8 @@ protected:
     InterfaceMonitor* frontMonitors[N_INTERFACES];
     // amount of time required to declare an interface as recovered
     double deltaT;
+    // minimum number of frames required before interface failures can be declared
+    int minFramesForFailure;
     // PDR threshold use to discriminate between an active and failed interface
     double pdr11p;
     double pdrCV2X;

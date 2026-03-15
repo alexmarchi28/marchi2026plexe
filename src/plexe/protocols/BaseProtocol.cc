@@ -145,6 +145,7 @@ void BaseProtocol::initialize(int stage)
 
         if (!positionHelper->isLeader()) {
             deltaT = par("deltaT").doubleValue();
+            minFramesForFailure = par("minFramesForFailure").intValue();
             pdr11p = par("pdr11p").doubleValue();
             pdrCV2X = par("pdrCV2X").doubleValue();
             pdrVLC = par("pdrVLC").doubleValue();
@@ -156,8 +157,8 @@ void BaseProtocol::initialize(int stage)
             checkLeaderInterfacesStatus = new cMessage("checkLeaderInterfacesStatus");
             checkFrontInterfacesStatus = new cMessage("checkFrontInterfacesStatus");
             for (int i = 0; i < N_INTERFACES; i++) {
-                leaderMonitors[i] = new InterfaceMonitor(leaderFrames, i, pdrs[i], deltaT);
-                frontMonitors[i] = new InterfaceMonitor(frontFrames, i, pdrs[i], deltaT);
+                leaderMonitors[i] = new InterfaceMonitor(leaderFrames, i, pdrs[i], deltaT, minFramesForFailure);
+                frontMonitors[i] = new InterfaceMonitor(frontFrames, i, pdrs[i], deltaT, minFramesForFailure);
             }
         }
         else {
