@@ -197,9 +197,9 @@ plot.dynamics <- function(config, dynamics, events, handovers=NA) {
         for (i in unique(dynamics$scenario)) {
             for (j in unique(dynamics$useTempLeader)) {
                 for (xvalues in c(F, T)) {
-                    if (j == 0) next;
                     dyn <- subset(dynamics, scenario == i & useTempLeader == j & runNumber == n)
                     ev <- subset(events, scenario == i & useTempLeader == j & runNumber == n)
+                    if (nrow(dyn) == 0) next
                     if (!all(is.na(handovers))) ho <- subset(handovers, runNumber == n)
                     else ho <- NA
 
