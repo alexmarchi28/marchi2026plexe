@@ -40,8 +40,6 @@ moduleinterface BaseProtocol
 
         //amount of time required to declare an interface as recovered
         double deltaT @unit(s);
-        // minimum number of frames required before interface failures can be declared
-        int minFramesForFailure;
         //PDR threshold use to discriminate between an active and failed interface
         double pdr11p;
         double pdrCV2X;
