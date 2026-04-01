@@ -662,9 +662,10 @@ void GeneralPlatooningApp::timeout()
 void GeneralPlatooningApp::onTemporaryLeader(int veh, bool tempLeader)
 {
     if (useTemporaryLeader) {
-        // ignore temporary leader advertisement coming from vehicles behind us (or from the original leader)
+        // ignore temporary leader advertisement coming from vehicles behind us, from ourselves,
+        // or from the original leader
         int position = positionHelper->getMemberPosition(veh);
-        if (position == 0 || position > positionHelper->getPosition()) return;
+        if (position == 0 || position >= positionHelper->getPosition()) return;
 
         if (tempLeader) tempLeaders.insert(position);
         else tempLeaders.erase(position);
